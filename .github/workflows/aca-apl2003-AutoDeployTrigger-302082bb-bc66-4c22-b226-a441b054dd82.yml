@@ -1,0 +1,48 @@
+name: Trigger auto deployment for aca-apl2003
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/aca-apl2003-AutoDeployTrigger-302082bb-bc66-4c22-b226-a441b054dd82.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.ACAAPL2003_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.ACAAPL2003_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.ACAAPL2003_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: acrapl2003rg.azurecr.io
+          registryUsername: ${{ secrets.ACAAPL2003_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.ACAAPL2003_REGISTRY_PASSWORD }}
+          containerAppName: aca-apl2003
+          resourceGroup: BestPrice-RG
+          imageToBuild: acrapl2003rg.azurecr.io/aca-apl2003:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
